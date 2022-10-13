@@ -6,13 +6,18 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Chat;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.sshibko.TeleBot.config.BotConfig;
-
+import ru.sshibko.TeleBot.model.entity.User;
+import ru.sshibko.TeleBot.model.repository.UserRepository;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -20,6 +25,9 @@ import java.util.List;
 public class TelegramBotService extends TelegramLongPollingBot {
 
     private final BotConfig config;
+
+    @Autowired
+    private UserRepository userRepository;
     private static final String HELP_TEXT = "This bot is designed to cheer sad people \n\n"
             + "You can execute commands from the main menu at the left angle or by typing command:\n\n"
             + "Type /start to see a welcome message\n\n"
@@ -63,6 +71,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
 
             switch (messageText) {
                 case "/start":
+                    registerUser(update.getMessage());
                     startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
                     break;
                 case "/help":
@@ -97,6 +106,23 @@ public class TelegramBotService extends TelegramLongPollingBot {
             execute(message);
         } catch (TelegramApiException e) {
             log.error("Error occurred: " + e.getMessage());
+        }
+    }
+
+    private void registerUser(Message message) {
+        if (userRepository.findById(message.getChatId()).isEmpty()) {
+            Long chatId = message.getChatId();
+            Chat chat = message.getChat();
+
+            User user = new User();
+            user.setChatId(chatId);
+            user.setFirstName(chat.getFirstName());
+            user.setLastName(chat.getLastName());
+            user.setUserName(chat.getUserName());
+            user.setRegisteredAt(new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+
+            userRepository.save(user);
+            log.info("user " + user + " saved");
         }
     }
 }
