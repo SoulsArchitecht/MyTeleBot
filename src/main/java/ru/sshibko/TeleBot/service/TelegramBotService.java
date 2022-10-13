@@ -4,20 +4,45 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.sshibko.TeleBot.config.BotConfig;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @Slf4j
 public class TelegramBotService extends TelegramLongPollingBot {
 
     private final BotConfig config;
+    private static final String HELP_TEXT = "This bot is designed to cheer sad people \n\n"
+            + "You can execute commands from the main menu at the left angle or by typing command:\n\n"
+            + "Type /start to see a welcome message\n\n"
+            + "Type /help to see help information\n\n"
+            + "Type /cheerme to get fun\n\n"
+            + "Type /userdata to get your personal information\n\n"
+            + "Type /deletedata to delete your personal information\n\n"
+            + "Type /settings to set your preferences";
 
     @Autowired
     public TelegramBotService(BotConfig config) {
         this.config = config;
+        List<BotCommand> listOfCommands = new ArrayList<>();
+        listOfCommands.add(new BotCommand("/start", "get a welcome message"));
+        listOfCommands.add(new BotCommand("/userdata", "get user information"));
+        listOfCommands.add(new BotCommand("/deletedata", "delete user information"));
+        listOfCommands.add(new BotCommand("/help", "help info"));
+        listOfCommands.add(new BotCommand("/settings", "set your preferences"));
+        try {
+            this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
+        } catch (TelegramApiException e) {
+            log.error("Error setting bot command list: " + e.getMessage());
+        }
     }
 
     @Override
@@ -40,8 +65,11 @@ public class TelegramBotService extends TelegramLongPollingBot {
                 case "/start":
                     startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
                     break;
-                case "/say":
-                    startCommandReceived2(chatId, update.getMessage().getChat().getFirstName());
+                case "/help":
+                    sendMessage(chatId, HELP_TEXT);
+                    break;
+                case "/cheerme":
+                    cheerMeCommandReceived(chatId, update.getMessage().getChat().getFirstName());
                     break;
                 default:
                     sendMessage(chatId, "Sorry, command was not recognized");
@@ -56,8 +84,8 @@ public class TelegramBotService extends TelegramLongPollingBot {
         log.info("Replied to user " + name);
     }
 
-    private void startCommandReceived2(long chatId, String name) {
-        String answer = "Thank you, " + name + "!";
+    private void cheerMeCommandReceived(long chatId, String name) {
+        String answer = "Get fun, " + name + "!";
         sendMessage(chatId, answer);
     }
 
