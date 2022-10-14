@@ -1,5 +1,6 @@
 package ru.sshibko.TeleBot.service;
 
+import com.vdurmont.emoji.EmojiParser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,8 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.sshibko.TeleBot.config.BotConfig;
 import ru.sshibko.TeleBot.model.entity.User;
@@ -80,6 +83,13 @@ public class TelegramBotService extends TelegramLongPollingBot {
                 case "/cheerme":
                     cheerMeCommandReceived(chatId, update.getMessage().getChat().getFirstName());
                     break;
+                case "/userdata":
+                    sendMessage(chatId, update.getMessage().getChat().getFirstName() + "\n"
+                        + update.getMessage().getChat().getLastName() + "\n"
+                        + update.getMessage().getChat().getUserName() + "\n"
+                        + update.getMessage().getChat().getPhoto() + "\n"
+                        + update.getMessage().getChat().getBio());
+                    break;
                 default:
                     sendMessage(chatId, "Sorry, command was not recognized");
             }
@@ -88,7 +98,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
     }
 
     private void startCommandReceived(long chatId, String name) {
-        String answer = "Hi, " + name + ", nice to meet you!";
+        String answer = EmojiParser.parseToUnicode("Hi, " + name + ", nice to meet you!" + " :blush:");
         sendMessage(chatId, answer);
         log.info("Replied to user " + name);
     }
@@ -102,6 +112,9 @@ public class TelegramBotService extends TelegramLongPollingBot {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText(textToSend);
+
+        message.setReplyMarkup(applyKeyboardKeys());
+
         try {
             execute(message);
         } catch (TelegramApiException e) {
@@ -124,5 +137,23 @@ public class TelegramBotService extends TelegramLongPollingBot {
             userRepository.save(user);
             log.info("user " + user + " saved");
         }
+    }
+
+    private ReplyKeyboardMarkup applyKeyboardKeys() {
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboardRows = new ArrayList<>();
+        KeyboardRow row1 = new KeyboardRow();
+        row1.add("about a weather");
+        row1.add("get random joke");
+        row1.add("check up on");
+        keyboardRows.add(row1);
+        KeyboardRow row2 = new KeyboardRow();
+        row2.add("register");
+        row2.add("check my personal data");
+        row2.add("delete my personal data");
+        keyboardRows.add(row2);
+
+        keyboardMarkup.setKeyboard(keyboardRows);
+        return keyboardMarkup;
     }
 }
