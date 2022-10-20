@@ -7,12 +7,15 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.sshibko.TeleBot.config.BotConfig;
@@ -38,7 +41,8 @@ public class TelegramBotService extends TelegramLongPollingBot {
             + "Type /cheerme to get fun\n\n"
             + "Type /userdata to get your personal information\n\n"
             + "Type /deletedata to delete your personal information\n\n"
-            + "Type /settings to set your preferences";
+            + "Type /settings to set your preferences\n\n"
+            + "Type /register for registration";
 
     @Autowired
     public TelegramBotService(BotConfig config) {
@@ -49,6 +53,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
         listOfCommands.add(new BotCommand("/deletedata", "delete user information"));
         listOfCommands.add(new BotCommand("/help", "help info"));
         listOfCommands.add(new BotCommand("/settings", "set your preferences"));
+        listOfCommands.add(new BotCommand("/register", "for registration"));
         try {
             this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
         } catch (TelegramApiException e) {
@@ -90,11 +95,74 @@ public class TelegramBotService extends TelegramLongPollingBot {
                         + update.getMessage().getChat().getPhoto() + "\n"
                         + update.getMessage().getChat().getBio());
                     break;
+                case "/register":
+                    register(chatId);
                 default:
                     sendMessage(chatId, "Sorry, command was not recognized");
             }
+        } else if (update.hasCallbackQuery()) {
+            String callbackDate = update.getCallbackQuery().getData();
+            long messageId = update.getCallbackQuery().getMessage().getMessageId();
+            long chatId = update.getCallbackQuery().getMessage().getChatId();
+
+            if (callbackDate.equals("YES_BUTTON")) {
+                String text = "You pressed YES button";
+                EditMessageText message = new EditMessageText();
+                message.setChatId(chatId);
+                message.setText(text);
+                message.setMessageId((int) messageId);
+
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    log.error("Error occurred: " + e.getMessage());
+                }
+            } else if (callbackDate.equals("NO_BUTTON")) {
+                String text = "You pressed NO button";
+                EditMessageText message = new EditMessageText();
+                message.setChatId(chatId);
+                message.setText(text);
+                message.setMessageId((int) messageId);
+
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    log.error("Error occurred: " + e.getMessage());
+                }
+            }
         }
 
+    }
+
+    private void register(long chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText("Do you really want to register?");
+
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInLine = new ArrayList<>();
+        List<InlineKeyboardButton> rowInLine = new ArrayList<>();
+
+        var buttonYes = new InlineKeyboardButton();
+        buttonYes.setText("Yes");
+        buttonYes.setCallbackData("YES_BUTTON");
+        var buttonNo = new InlineKeyboardButton();
+        buttonNo.setText("No");
+        buttonNo.setCallbackData("NO_BUTTON");
+
+        rowInLine.add(buttonYes);
+        rowInLine.add(buttonNo);
+
+        rowsInLine.add(rowInLine);
+
+        inlineKeyboardMarkup.setKeyboard(rowsInLine);
+        message.setReplyMarkup(inlineKeyboardMarkup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Error occurred: " + e.getMessage());
+        }
     }
 
     private void startCommandReceived(long chatId, String name) {
