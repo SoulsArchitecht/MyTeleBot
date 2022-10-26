@@ -1,6 +1,7 @@
 package ru.sshibko.TeleBot.service;
 
 import com.vdurmont.emoji.EmojiParser;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -76,6 +77,16 @@ public class TelegramBotService extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
+
+            if (messageText.contains("/send") && chatId == config.getOwnerChatId()) {
+                var textToSend = EmojiParser.parseToUnicode(messageText.substring(
+                        messageText.indexOf(" ")));
+                var users= userRepository.findAll();
+                //Iterable<User> users = userRepository.findAll();
+                for (User user: users) {
+                    sendMessage(user.getChatId(), textToSend);
+                }
+            }
 
             switch (messageText) {
                 case "/start":
