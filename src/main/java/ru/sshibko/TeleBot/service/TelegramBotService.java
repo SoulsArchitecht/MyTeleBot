@@ -3,6 +3,7 @@ package ru.sshibko.TeleBot.service;
 import com.vdurmont.emoji.EmojiParser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
@@ -19,7 +20,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.sshibko.TeleBot.config.BotConfig;
+import ru.sshibko.TeleBot.model.entity.Ad;
 import ru.sshibko.TeleBot.model.entity.User;
+import ru.sshibko.TeleBot.model.repository.AdRepository;
 import ru.sshibko.TeleBot.model.repository.UserRepository;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -30,10 +33,14 @@ import java.util.List;
 @Slf4j
 public class TelegramBotService extends TelegramLongPollingBot {
 
+    @Autowired
     private final BotConfig config;
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private AdRepository adRepository;
     private static final String HELP_TEXT = "This bot is designed to cheer sad people \n\n"
             + "You can execute commands from the main menu at the left angle or by typing command:\n\n"
             + "Type /start to see a welcome message\n\n"
@@ -249,5 +256,18 @@ public class TelegramBotService extends TelegramLongPollingBot {
         message.setChatId(String.valueOf(chatId));
         message.setText(textToSend);
         return message;
+    }
+
+    @Scheduled(cron = "${bot.cron.scheduler}" ) // seconds, minutes, days, month, dayOfTheWeek
+    private void sendAds() {
+        var ads = adRepository.findAll();
+        var users = userRepository.findAll();
+
+        for (Ad ad: ads) {
+            for (User user: users) {
+               SendMessage message = prepareMessage(user.getChatId(), ad.getAdText());
+               executeSendMessage(message);
+            }
+        }
     }
 }
